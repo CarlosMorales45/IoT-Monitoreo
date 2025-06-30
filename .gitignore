@@ -1,4 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.env
+.venv/
+venv/
+ENV/
+env/
+*.egg-info/
+
+# Carpetas de dependencias creadas por pip -t
+backend/lambdas/*/bin/
+backend/lambdas/*/boto3/
+backend/lambdas/*/botocore/
+backend/lambdas/*/dateutil/
+backend/lambdas/*/jmespath/
+backend/lambdas/*/s3transfer/
+backend/lambdas/*/six.py
+backend/lambdas/*/six-*.dist-info/
+backend/lambdas/*/urllib3/
+backend/lambdas/*/python_dateutil-*.dist-info/
+backend/lambdas/*/boto3-*.dist-info/
+backend/lambdas/*/botocore-*.dist-info/
+backend/lambdas/*/jmespath-*.dist-info/
+backend/lambdas/*/s3transfer-*.dist-info/
+backend/lambdas/*/urllib3-*.dist-info/
+
+# Zips empaquetados para subir a AWS
+backend/lambda_build/*.zip
+
+# Terraform
 .terraform/
 *.tfstate
-*.tfstate.backup
-*.terraform.lock.hcl
+*.tfstate.*
+.terraform.lock.hcl
+
+# VSCode y sistema operativo
+.vscode/
+.DS_Store
+Thumbs.db
