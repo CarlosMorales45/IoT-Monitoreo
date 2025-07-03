@@ -8,3 +8,13 @@ variable "dynamodb_table_name" {
   type        = string
   default     = "iot-monitoreo-datos"
 }
+
+variable "TELEGRAM_BOT_TOKEN" {
+  description = "Token del bot de Telegram para notificaciones"
+  type        = string
+}
+
+variable "TELEGRAM_CHAT_ID" {
+  description = "Chat ID de Telegram para enviar notificaciones"
+  type        = string
+}
