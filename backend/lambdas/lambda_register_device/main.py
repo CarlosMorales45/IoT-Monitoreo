@@ -7,12 +7,31 @@ dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_NAME'])
 
 def lambda_handler(event, context):
-    device_id = event.get('device_id')
-    nombre = event.get('nombre', 'Dispositivo sin nombre')
-    tipo = event.get('tipo', 'generico')
-    ubicacion = event.get('ubicacion', 'no especificada')
-    estado = event.get('estado', 'activo')
+    # Body puede ser string (por API Gateway)
+    if 'body' in event and event['body']:
+        try:
+            payload = json.loads(event['body'])
+        except Exception:
+            return {
+                'statusCode': 400,
+                'body': json.dumps({'error': 'Invalid JSON'})
+            }
+    else:
+        payload = event
+
+    device_id = payload.get('device_id')
+    nombre = payload.get('nombre', 'Dispositivo sin nombre')
+    tipo = payload.get('tipo', 'generico')
+    ubicacion = payload.get('ubicacion', 'no especificada')
+    estado = payload.get('estado', 'activo')
+    username = payload.get('username')  # <--- MULTIUSUARIO
     timestamp = datetime.utcnow().isoformat()
+
+    if not device_id or not username:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': 'device_id y username requeridos'})
+        }
 
     item = {
         'device_id': device_id,
@@ -21,6 +40,7 @@ def lambda_handler(event, context):
         'tipo': tipo,
         'ubicacion': ubicacion,
         'estado': estado,
+        'username': username,    # <--- MULTIUSUARIO
         'message': 'Device registered!'
     }
     table.put_item(Item=item)

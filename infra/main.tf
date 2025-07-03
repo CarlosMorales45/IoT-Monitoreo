@@ -321,3 +321,89 @@ resource "aws_lambda_event_source_mapping" "trigger_notify_recovery" {
   batch_size        = 1
   enabled           = true
 }
+
+# --- DynamoDB para usuarios de IoT ---
+resource "aws_dynamodb_table" "iot_users" {
+  name         = "iot-usuarios"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "username"
+  attribute {
+    name = "username"
+    type = "S"
+  }
+  tags = {
+    Name     = "iot-usuarios"
+    Proyecto = "IAC-Monitoreo"
+  }
+}
+
+# --- Lambda: login_user ---
+resource "aws_lambda_function" "login_user" {
+  function_name = "login_user"
+  handler       = "main.lambda_handler"
+  runtime       = "python3.12"
+  filename         = "${path.module}/../backend/lambda_build/lambda_login_user.zip"
+  source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_login_user.zip")
+  role = aws_iam_role.lambda_role.arn
+
+  environment {
+    variables = {
+      USERS_TABLE_NAME = aws_dynamodb_table.iot_users.name
+    }
+  }
+  timeout = 10
+}
+
+# --- Lambda: register_user ---
+resource "aws_lambda_function" "register_user" {
+  function_name = "register_user"
+  handler       = "main.lambda_handler"
+  runtime       = "python3.12"
+  filename         = "${path.module}/../backend/lambda_build/lambda_register_user.zip"
+  source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_register_user.zip")
+  role = aws_iam_role.lambda_role.arn
+
+  environment {
+    variables = {
+      USERS_TABLE_NAME = aws_dynamodb_table.iot_users.name
+    }
+  }
+  timeout = 10
+}
+
+# Permisos para que la Lambda pueda escribir y leer usuarios
+resource "aws_iam_role_policy" "lambda_register_user_policy" {
+  name = "lambda-register-user-policy"
+  role = aws_iam_role.lambda_role.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem"
+        ],
+        Resource = aws_dynamodb_table.iot_users.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "lambda_users_policy" {
+  name = "lambda-users-policy"
+  role = aws_iam_role.lambda_role.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem"
+        ],
+        Resource = aws_dynamodb_table.iot_users.arn
+      }
+    ]
+  })
+}
