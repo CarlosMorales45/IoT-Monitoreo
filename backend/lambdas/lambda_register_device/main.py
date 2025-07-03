@@ -6,14 +6,22 @@ from datetime import datetime
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_NAME'])
 
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
+}
+
 def lambda_handler(event, context):
-    # Body puede ser string (por API Gateway)
+    print(f"[INFO] Registrar dispositivo - Event: {event}")
     if 'body' in event and event['body']:
         try:
             payload = json.loads(event['body'])
-        except Exception:
+        except Exception as e:
+            print(f"[ERROR] JSON inválido: {e}")
             return {
                 'statusCode': 400,
+                'headers': CORS_HEADERS,
                 'body': json.dumps({'error': 'Invalid JSON'})
             }
     else:
@@ -24,12 +32,14 @@ def lambda_handler(event, context):
     tipo = payload.get('tipo', 'generico')
     ubicacion = payload.get('ubicacion', 'no especificada')
     estado = payload.get('estado', 'activo')
-    username = payload.get('username')  # <--- MULTIUSUARIO
+    username = payload.get('username')
     timestamp = datetime.utcnow().isoformat()
 
     if not device_id or not username:
+        print("[WARN] Faltan datos obligatorios (device_id o username)")
         return {
             'statusCode': 400,
+            'headers': CORS_HEADERS,
             'body': json.dumps({'error': 'device_id y username requeridos'})
         }
 
@@ -40,12 +50,21 @@ def lambda_handler(event, context):
         'tipo': tipo,
         'ubicacion': ubicacion,
         'estado': estado,
-        'username': username,    # <--- MULTIUSUARIO
+        'username': username,
         'message': 'Device registered!'
     }
-    table.put_item(Item=item)
-
-    return {
-        'statusCode': 200,
-        'body': json.dumps(item)
-    }
+    try:
+        table.put_item(Item=item)
+        print(f"[INFO] Dispositivo registrado: {item}")
+        return {
+            'statusCode': 200,
+            'headers': CORS_HEADERS,
+            'body': json.dumps(item)
+        }
+    except Exception as e:
+        print(f"[ERROR] Error al registrar dispositivo: {e}")
+        return {
+            'statusCode': 500,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'error': str(e)})
+        }

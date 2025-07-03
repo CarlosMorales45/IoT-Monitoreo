@@ -13,22 +13,23 @@ export default function Register() {
     setMensaje("");
     try {
       await register(username, password);
-      setMensaje("Usuario creado. Ahora puedes iniciar sesión.");
-      setTimeout(() => navigate("/login"), 1500);
+      setMensaje("Usuario registrado. Ahora puedes iniciar sesión.");
+      setTimeout(() => navigate("/login"), 1200);
     } catch (e) {
-      setMensaje("Error: el usuario ya existe.");
+      console.log("Error al registrar:", e.response?.data || e.message);  // <-- Esto
+      setMensaje("Error: El usuario ya existe o hubo un problema.");
     }
   };
 
   return (
-    <div className="register-container">
+    <div>
       <h2>Registro</h2>
       <form onSubmit={handleSubmit}>
         <input placeholder="Usuario" value={username} onChange={e => setUsername(e.target.value)} required />
         <input placeholder="Contraseña" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-        <button type="submit">Registrarse</button>
+        <button type="submit">Registrarme</button>
       </form>
-      <button onClick={() => navigate("/login")}>Volver al Login</button>
+      <button onClick={() => navigate("/login")}>Volver a login</button>
       {mensaje && <div style={{ color: "green", marginTop: 10 }}>{mensaje}</div>}
     </div>
   );

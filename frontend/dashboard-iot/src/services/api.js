@@ -1,26 +1,18 @@
 import axios from "axios";
 const API_URL = process.env.REACT_APP_API_URL;
+console.log("API_URL:", API_URL);  // <-- Esto te muestra la URL real usada
 
-export const api = axios.create({
-  baseURL: API_URL,
-  headers: { "Content-Type": "application/json" },
-});
-
-// Funciones útiles
 export const login = (username, password) =>
-  api.post("/login", { username, password });
+  axios.post(`${API_URL}/login`, { username, password });
 
 export const register = (username, password) =>
-  api.post("/register", { username, password });
+  axios.post(`${API_URL}/register`, { username, password });
 
-export const getDevices = (username) =>
-  api.get(`/devices?username=${username}`);
+export const listarDispositivos = (username) =>
+  axios.get(`${API_URL}/devices`, { params: { username } });
 
-export const addDevice = (device) =>
-  api.post("/devices", device);
+export const registrarDispositivo = (data) =>
+  axios.post(`${API_URL}/devices`, data);
 
-export const updateDevice = (device_id, payload) =>
-  api.put(`/devices/${device_id}`, payload);
-
-export const deleteDevice = (device_id, payload) =>
-  api.delete(`/devices/${device_id}`, { data: payload });
+export const eliminarDispositivo = (device_id, timestamp, username) =>
+  axios.delete(`${API_URL}/devices/${device_id}`, { data: { timestamp, username } });

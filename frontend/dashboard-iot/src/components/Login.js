@@ -12,17 +12,18 @@ export default function Login({ setUser }) {
     e.preventDefault();
     setMensaje("");
     try {
-      const res = await login(username, password);
+      await login(username, password);
       setUser(username);
       localStorage.setItem("iot_username", username);
       navigate("/dashboard");
     } catch (e) {
+      console.log("Error al logear:", e.response?.data || e.message);  // <-- Esto
       setMensaje("Credenciales inválidas");
     }
   };
 
   return (
-    <div className="login-container">
+    <div>
       <h2>Iniciar Sesión</h2>
       <form onSubmit={handleSubmit}>
         <input placeholder="Usuario" value={username} onChange={e => setUsername(e.target.value)} required />

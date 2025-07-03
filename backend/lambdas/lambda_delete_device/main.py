@@ -5,7 +5,14 @@ import os
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_NAME'])
 
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+    "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
+}
+
 def lambda_handler(event, context):
+    print(f"[INFO] Eliminar dispositivo - Event: {event}")
     device_id = None
     timestamp = None
     username = None
@@ -17,22 +24,41 @@ def lambda_handler(event, context):
             body = json.loads(event['body'])
             timestamp = body.get('timestamp')
             username = body.get('username')
-        except Exception:
+        except Exception as e:
+            print(f"[ERROR] Error parseando body: {e}")
             timestamp = None
             username = None
 
     if not device_id or not timestamp or not username:
-        return {'statusCode': 400, 'body': json.dumps({'message': 'device_id, timestamp y username son requeridos'})}
+        print("[WARN] Falta device_id, timestamp o username")
+        return {
+            'statusCode': 400,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'message': 'device_id, timestamp y username son requeridos'})
+        }
 
-    # Verifica que sea del usuario
-    resp = table.get_item(Key={'device_id': device_id, 'timestamp': timestamp})
-    item = resp.get('Item')
-    if not item or item.get('username') != username:
-        return {'statusCode': 404, 'body': json.dumps({'error': 'No autorizado o dispositivo no encontrado'})}
+    try:
+        resp = table.get_item(Key={'device_id': device_id, 'timestamp': timestamp})
+        item = resp.get('Item')
+        if not item or item.get('username') != username:
+            print(f"[WARN] No autorizado o dispositivo no encontrado: {device_id}, {timestamp}, {username}")
+            return {
+                'statusCode': 404,
+                'headers': CORS_HEADERS,
+                'body': json.dumps({'error': 'No autorizado o dispositivo no encontrado'})
+            }
 
-    response = table.delete_item(Key={'device_id': device_id, 'timestamp': timestamp})
-
-    return {
-        'statusCode': 200,
-        'body': json.dumps({'message': 'Device deleted!', 'device_id': device_id, 'timestamp': timestamp})
-    }
+        table.delete_item(Key={'device_id': device_id, 'timestamp': timestamp})
+        print(f"[INFO] Dispositivo eliminado: {device_id}, timestamp: {timestamp}, usuario: {username}")
+        return {
+            'statusCode': 200,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'message': 'Device deleted!', 'device_id': device_id, 'timestamp': timestamp})
+        }
+    except Exception as e:
+        print(f"[ERROR] Error al eliminar dispositivo: {e}")
+        return {
+            'statusCode': 500,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'error': str(e)})
+        }
