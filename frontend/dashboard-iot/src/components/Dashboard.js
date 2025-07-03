@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { getDevices, addDevice, deleteDevice } from "../services/api";
+import React, { useState, useEffect, useCallback } from "react";
+import { listarDispositivos, registrarDispositivo, eliminarDispositivo } from "../services/api";
 import { useNavigate } from "react-router-dom";
 
 export default function Dashboard({ user, setUser }) {
   const [devices, setDevices] = useState([]);
-  const [newDevice, setNewDevice] = useState({
+  const [nuevo, setNuevo] = useState({
     device_id: "",
     nombre: "",
     tipo: "",
@@ -15,38 +15,38 @@ export default function Dashboard({ user, setUser }) {
   const [cargando, setCargando] = useState(false);
   const navigate = useNavigate();
 
+  // Función para cargar dispositivos (memoizada con useCallback)
+  const cargarDispositivos = useCallback(async () => {
+    setCargando(true);
+    try {
+      const res = await listarDispositivos(user);
+      setDevices(res.data);
+    } catch {
+      setMensaje("Error al cargar dispositivos");
+    }
+    setCargando(false);
+  }, [user]);
+
   useEffect(() => {
     if (!user) {
       navigate("/login");
       return;
     }
-    fetchDevices();
-    // eslint-disable-next-line
-  }, [user]);
+    cargarDispositivos();
+  }, [user, cargarDispositivos, navigate]);
 
-  const fetchDevices = async () => {
-    setCargando(true);
-    try {
-      const res = await getDevices(user);
-      setDevices(res.data);
-    } catch {
-      setMensaje("Error cargando dispositivos");
-    }
-    setCargando(false);
+  const handleChange = e => {
+    setNuevo({ ...nuevo, [e.target.name]: e.target.value });
   };
 
-  const handleChange = (e) => {
-    setNewDevice({ ...newDevice, [e.target.name]: e.target.value });
-  };
-
-  const handleRegistrar = async (e) => {
+  const handleRegistrar = async e => {
     e.preventDefault();
     setMensaje("");
     try {
-      await addDevice({ ...newDevice, username: user });
+      await registrarDispositivo({ ...nuevo, username: user });
       setMensaje("Dispositivo registrado");
-      setNewDevice({ device_id: "", nombre: "", tipo: "", ubicacion: "", estado: "activo" });
-      fetchDevices();
+      setNuevo({ device_id: "", nombre: "", tipo: "", ubicacion: "", estado: "activo" });
+      cargarDispositivos();
     } catch {
       setMensaje("Error al registrar");
     }
@@ -55,36 +55,33 @@ export default function Dashboard({ user, setUser }) {
   const handleEliminar = async (device_id, timestamp) => {
     if (!window.confirm("¿Eliminar este dispositivo?")) return;
     try {
-      await deleteDevice(device_id, { timestamp, username: user });
+      await eliminarDispositivo(device_id, timestamp, user);
       setMensaje("Dispositivo eliminado");
-      fetchDevices();
+      cargarDispositivos();
     } catch {
       setMensaje("Error al eliminar");
     }
   };
 
   const handleLogout = () => {
-    setUser(null);
     localStorage.removeItem("iot_username");
+    setUser(null);
     navigate("/login");
   };
 
   return (
     <div style={{ maxWidth: 700, margin: "2rem auto", fontFamily: "sans-serif" }}>
       <h2>Dashboard Monitoreo IoT</h2>
-      <div style={{ float: "right" }}>
-        Usuario: <b>{user}</b>
-        <button onClick={handleLogout} style={{ marginLeft: 10 }}>Cerrar sesión</button>
-      </div>
-      {mensaje && <div style={{ color: "green", marginBottom: 8 }}>{mensaje}</div>}
+      <button onClick={handleLogout} style={{ float: "right" }}>Cerrar sesión</button>
+      {mensaje && <div style={{ color: 'green', marginBottom: 8 }}>{mensaje}</div>}
 
       <form onSubmit={handleRegistrar} style={{ marginBottom: 20, border: "1px solid #ccc", padding: 16 }}>
         <h3>Registrar dispositivo</h3>
-        <input name="device_id" value={newDevice.device_id} onChange={handleChange} placeholder="ID único" required />
-        <input name="nombre" value={newDevice.nombre} onChange={handleChange} placeholder="Nombre" required />
-        <input name="tipo" value={newDevice.tipo} onChange={handleChange} placeholder="Tipo" required />
-        <input name="ubicacion" value={newDevice.ubicacion} onChange={handleChange} placeholder="Ubicación" required />
-        <select name="estado" value={newDevice.estado} onChange={handleChange}>
+        <input name="device_id" value={nuevo.device_id} onChange={handleChange} placeholder="ID único" required />
+        <input name="nombre" value={nuevo.nombre} onChange={handleChange} placeholder="Nombre" required />
+        <input name="tipo" value={nuevo.tipo} onChange={handleChange} placeholder="Tipo" required />
+        <input name="ubicacion" value={nuevo.ubicacion} onChange={handleChange} placeholder="Ubicación" required />
+        <select name="estado" value={nuevo.estado} onChange={handleChange}>
           <option value="activo">Activo</option>
           <option value="error">Error</option>
         </select>

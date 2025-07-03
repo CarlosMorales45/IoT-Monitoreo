@@ -6,6 +6,7 @@ TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
 def lambda_handler(event, context):
+    print(f"[INFO] Notificar error - Event: {event}")
     for record in event.get('Records', []):
         if record.get('eventName') not in ['INSERT', 'MODIFY']:
             continue
@@ -18,6 +19,7 @@ def lambda_handler(event, context):
 
         if estado == "error":
             mensaje = f"⚠️ Alerta: El dispositivo {nombre} (ID: {device_id}) en {ubicacion} presenta un ERROR. ¡Intervención requerida!"
+            print(f"[INFO] Enviando alerta Telegram: {mensaje}")
             send_telegram(mensaje)
 
     return {"statusCode": 200, "body": "Processed"}
@@ -28,4 +30,8 @@ def send_telegram(text):
         "chat_id": TELEGRAM_CHAT_ID,
         "text": text
     }
-    requests.post(url, data=data)
+    try:
+        r = requests.post(url, data=data)
+        print(f"[INFO] Telegram response: {r.status_code}, {r.text}")
+    except Exception as e:
+        print(f"[ERROR] Error enviando mensaje Telegram: {e}")

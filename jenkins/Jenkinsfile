@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+
+    environment {
+        // Opcional: fuerza instalación local de pip
+        PATH = "${HOME}/.local/bin:${PATH}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Clona el repo
+                checkout scm
+            }
+        }
+        stage('Install Checkov') {
+            steps {
+                // Instala checkov sólo si no está presente
+                sh '''
+                    if ! command -v checkov >/dev/null 2>&1; then
+                        pip install --user checkov
+                    fi
+                '''
+            }
+        }
+        stage('Run Checkov') {
+            steps {
+                // Ejecuta el análisis y guarda el reporte
+                sh '''
+                    checkov -d infra/ --output cli | tee checkov_report.txt
+                '''
+            }
+        }
+    }
+    post {
+        always {
+            // Archiva el reporte como artefacto de Jenkins
+            archiveArtifacts artifacts: 'checkov_report.txt', allowEmptyArchive: true
+        }
+    }
+}

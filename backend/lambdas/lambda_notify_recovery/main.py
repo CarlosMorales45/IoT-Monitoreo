@@ -6,6 +6,7 @@ TELEGRAM_BOT_TOKEN = os.environ['TELEGRAM_BOT_TOKEN']
 TELEGRAM_CHAT_ID = os.environ['TELEGRAM_CHAT_ID']
 
 def lambda_handler(event, context):
+    print(f"[INFO] Notificar recuperación - Event: {event}")
     for record in event.get('Records', []):
         if record.get('eventName') not in ['INSERT', 'MODIFY']:
             continue
@@ -18,9 +19,9 @@ def lambda_handler(event, context):
         nombre = new_image.get('nombre', {}).get('S', '')
         ubicacion = new_image.get('ubicacion', {}).get('S', '')
 
-        # Notificar si el estado pasa a "activo" y antes no era "activo"
         if estado_nuevo == "activo" and estado_antiguo != "activo":
             mensaje = f"✅ Info: El dispositivo {nombre} (ID: {device_id}) en {ubicacion} se ha RECUPERADO y está activo."
+            print(f"[INFO] Enviando mensaje de recuperación: {mensaje}")
             send_telegram(mensaje)
 
     return {"statusCode": 200, "body": "Processed"}
@@ -31,4 +32,8 @@ def send_telegram(text):
         "chat_id": TELEGRAM_CHAT_ID,
         "text": text
     }
-    requests.post(url, data=data)
+    try:
+        r = requests.post(url, data=data)
+        print(f"[INFO] Telegram response: {r.status_code}, {r.text}")
+    except Exception as e:
+        print(f"[ERROR] Error enviando mensaje Telegram: {e}")
