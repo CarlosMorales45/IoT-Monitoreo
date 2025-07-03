@@ -2,40 +2,79 @@ pipeline {
     agent any
 
     environment {
-        // Opcional: fuerza instalación local de pip
+        // Ajusta si usas rutas absolutas
         PATH = "${HOME}/.local/bin:${PATH}"
+        // Para react
+        REACT_APP_API_URL = 'https://<TU_API_GATEWAY_URL>'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                // Clona el repo
                 checkout scm
             }
         }
-        stage('Install Checkov') {
+        stage('Análisis de Vulnerabilidades (Checkov)') {
             steps {
-                // Instala checkov sólo si no está presente
                 sh '''
                     if ! command -v checkov >/dev/null 2>&1; then
                         pip install --user checkov
                     fi
+                    checkov -d infra/ --output cli | tee checkov_report.txt
                 '''
             }
         }
-        stage('Run Checkov') {
+        stage('Empaquetar Lambdas') {
             steps {
-                // Ejecuta el análisis y guarda el reporte
+                // Llama tu script para crear los .zip de lambdas
+                powershell 'backend\\build_all_lambdas.ps1'
+            }
+        }
+        stage('Pruebas unitarias (pytest)') {
+            steps {
                 sh '''
-                    checkov -d infra/ --output cli | tee checkov_report.txt
+                    pip install --user pytest
+                    pytest backend/tests | tee pytest_report.txt
+                '''
+            }
+        }
+        stage('Terraform Plan & Apply') {
+            steps {
+                dir('infra') {
+                    withCredentials([string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                                     string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh '''
+                            terraform init
+                            terraform plan -out=tfplan
+                            terraform apply -auto-approve tfplan
+                        '''
+                    }
+                }
+            }
+        }
+        stage('Build Frontend (React)') {
+            steps {
+                dir('frontend/dashboard-iot') {
+                    sh '''
+                        npm install
+                        npm run build
+                    '''
+                }
+            }
+        }
+        stage('Upload Frontend to S3') {
+            steps {
+                // Ajusta el bucket al nombre real (ver outputs de Terraform)
+                sh '''
+                    aws s3 sync frontend/dashboard-iot/build s3://iot-monitoreo-dashboard-<TU_SUFIJO> --delete
                 '''
             }
         }
     }
     post {
         always {
-            // Archiva el reporte como artefacto de Jenkins
             archiveArtifacts artifacts: 'checkov_report.txt', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'pytest_report.txt', allowEmptyArchive: true
         }
     }
 }
