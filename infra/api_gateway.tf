@@ -203,8 +203,8 @@ resource "aws_api_gateway_deployment" "api_deployment" {
     aws_api_gateway_integration.get_device_integration,
     aws_api_gateway_integration.put_device_integration,
     aws_api_gateway_integration.delete_device_integration,
-    aws_api_gateway_integration.post_register_integration, # <-- AGREGADO
-    aws_api_gateway_integration.post_login_integration     # <-- AGREGADO
+    aws_api_gateway_integration.post_register_integration,
+    aws_api_gateway_integration.post_login_integration
   ]
   rest_api_id = aws_api_gateway_rest_api.iot_api.id
 }
