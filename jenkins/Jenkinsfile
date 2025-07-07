@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        PATH = "${HOME}/.local/bin;${PATH}" // Usa ; para Windows
+        // Esto realmente afecta solo los pasos shell globales, pero para seguridad lo dejamos
+        PATH = "${HOME}/.local/bin;${PATH}"
     }
 
     stages {
@@ -15,6 +16,7 @@ pipeline {
             steps {
                 bat '''
                     pip install --user checkov
+                    set PATH=%PATH%;C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Python\\Python313\\Scripts
                     checkov -d infra/ --output cli > checkov_report.txt
                 '''
             }
@@ -28,6 +30,7 @@ pipeline {
             steps {
                 bat '''
                     pip install --user pytest
+                    set PATH=%PATH%;C:\\Windows\\system32\\config\\systemprofile\\AppData\\Roaming\\Python\\Python313\\Scripts
                     pytest backend/tests > pytest_report.txt
                 '''
             }
