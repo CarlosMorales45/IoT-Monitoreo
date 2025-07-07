@@ -123,7 +123,6 @@ resource "aws_dynamodb_table" "iot_data" {
 
 # --- SQS QUEUE PARA EVENTOS IoT (Referencias a sqs.tf) ---
 # Las colas y permisos se definen en sqs.tf
-# Solo nos aseguramos de usar las variables y outputs correctamente en las Lambdas
 
 # --- Lambda: register_device ---
 resource "aws_lambda_function" "register_device" {
@@ -359,6 +358,27 @@ resource "aws_iam_role_policy" "lambda_users_policy" {
           "dynamodb:PutItem"
         ],
         Resource = aws_dynamodb_table.iot_users.arn
+      }
+    ]
+  })
+}
+
+# --- NUEVO: Permiso para acceso a DynamoDB Streams (IMPORTANTE) ---
+resource "aws_iam_role_policy" "lambda_dynamodb_stream_policy" {
+  name = "lambda-dynamodb-stream-policy"
+  role = aws_iam_role.lambda_role.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:GetRecords",
+          "dynamodb:GetShardIterator",
+          "dynamodb:DescribeStream",
+          "dynamodb:ListStreams"
+        ],
+        Resource = aws_dynamodb_table.iot_data.stream_arn
       }
     ]
   })
