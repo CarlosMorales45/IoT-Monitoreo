@@ -5,6 +5,10 @@ import os
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_NAME'])
 
+# Cliente SQS
+sqs = boto3.client('sqs')
+SQS_QUEUE_URL = os.environ.get('IOT_EVENTS_QUEUE_URL')
+
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
@@ -50,6 +54,23 @@ def lambda_handler(event, context):
 
         table.delete_item(Key={'device_id': device_id, 'timestamp': timestamp})
         print(f"[INFO] Dispositivo eliminado: {device_id}, timestamp: {timestamp}, usuario: {username}")
+
+        # Publicar evento en SQS
+        if SQS_QUEUE_URL:
+            try:
+                sqs.send_message(
+                    QueueUrl=SQS_QUEUE_URL,
+                    MessageBody=json.dumps({
+                        'event': 'delete_device',
+                        'device_id': device_id,
+                        'username': username,
+                        'timestamp': timestamp
+                    })
+                )
+                print("[INFO] Mensaje enviado a SQS")
+            except Exception as sqs_err:
+                print(f"[WARN] No se pudo enviar a SQS: {sqs_err}")
+
         return {
             'statusCode': 200,
             'headers': CORS_HEADERS,

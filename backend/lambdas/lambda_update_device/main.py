@@ -1,15 +1,38 @@
 import json
 import boto3
 import os
+from datetime import datetime
 
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_NAME'])
+
+# Cliente SQS
+sqs = boto3.client('sqs')
+SQS_QUEUE_URL = os.environ.get('IOT_EVENTS_QUEUE_URL')
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
     "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
 }
+
+def send_event_to_sqs(event_type, payload):
+    if not SQS_QUEUE_URL:
+        print("[WARN] SQS_QUEUE_URL no configurado")
+        return
+    try:
+        message = {
+            'event_type': event_type,
+            'payload': payload,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        response = sqs.send_message(
+            QueueUrl=SQS_QUEUE_URL,
+            MessageBody=json.dumps(message)
+        )
+        print(f"[INFO] Evento enviado a SQS: {response.get('MessageId')}")
+    except Exception as e:
+        print(f"[ERROR] No se pudo enviar mensaje a SQS: {e}")
 
 def lambda_handler(event, context):
     print(f"[INFO] Actualizar dispositivo - Event: {event}")
@@ -62,11 +85,21 @@ def lambda_handler(event, context):
             ExpressionAttributeValues=expr_attr_values,
             ReturnValues="ALL_NEW"
         )
-        print(f"[INFO] Dispositivo actualizado: {response.get('Attributes', {})}")
+        updated = response.get('Attributes', {})
+        print(f"[INFO] Dispositivo actualizado: {updated}")
+
+        # Publicar evento en SQS (usando función estandarizada)
+        send_event_to_sqs('update_device', {
+            'device_id': device_id,
+            'username': username,
+            'timestamp': timestamp,
+            'update_fields': update_fields
+        })
+
         return {
             'statusCode': 200,
             'headers': CORS_HEADERS,
-            'body': json.dumps(response.get('Attributes', {}))
+            'body': json.dumps(updated)
         }
     except Exception as e:
         print(f"[ERROR] Error al actualizar dispositivo: {e}")

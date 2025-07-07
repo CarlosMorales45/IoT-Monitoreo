@@ -6,11 +6,32 @@ from datetime import datetime
 dynamodb = boto3.resource('dynamodb')
 table = dynamodb.Table(os.environ['DYNAMODB_TABLE_NAME'])
 
+sqs = boto3.client('sqs')
+SQS_QUEUE_URL = os.environ.get('IOT_EVENTS_QUEUE_URL')  # ← Corrección aquí
+
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
     "Access-Control-Allow-Methods": "OPTIONS,POST,GET,PUT,DELETE"
 }
+
+def send_event_to_sqs(event_type, payload):
+    if not SQS_QUEUE_URL:
+        print("[WARN] SQS_QUEUE_URL no configurado")
+        return
+    try:
+        message = {
+            'event_type': event_type,
+            'payload': payload,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+        response = sqs.send_message(
+            QueueUrl=SQS_QUEUE_URL,
+            MessageBody=json.dumps(message)
+        )
+        print(f"[INFO] Evento enviado a SQS: {response.get('MessageId')}")
+    except Exception as e:
+        print(f"[ERROR] No se pudo enviar mensaje a SQS: {e}")
 
 def lambda_handler(event, context):
     print(f"[INFO] Registrar dispositivo - Event: {event}")
@@ -56,6 +77,8 @@ def lambda_handler(event, context):
     try:
         table.put_item(Item=item)
         print(f"[INFO] Dispositivo registrado: {item}")
+        # Enviar evento a SQS
+        send_event_to_sqs('register_device', item)
         return {
             'statusCode': 200,
             'headers': CORS_HEADERS,
