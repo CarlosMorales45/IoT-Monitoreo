@@ -259,6 +259,29 @@ resource "aws_lambda_function" "notify_recovery" {
   timeout = 10
 }
 
+# --- Permiso para que las Lambdas accedan a la tabla de dispositivos ---
+resource "aws_iam_role_policy" "lambda_devices_policy" {
+  name = "lambda-devices-policy"
+  role = aws_iam_role.lambda_role.id
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Scan",
+          "dynamodb:Query"
+        ],
+        Resource = aws_dynamodb_table.iot_data.arn
+      }
+    ]
+  })
+}
+
 # --- Trigger DynamoDB Stream para Lambda notify_error ---
 resource "aws_lambda_event_source_mapping" "trigger_notify_error" {
   event_source_arn  = aws_dynamodb_table.iot_data.stream_arn
