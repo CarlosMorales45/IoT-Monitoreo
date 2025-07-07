@@ -83,8 +83,6 @@ pipeline {
             archiveArtifacts artifacts: 'checkov_report.txt', allowEmptyArchive: true
             archiveArtifacts artifacts: 'pytest_report.txt', allowEmptyArchive: true
         }
-        failure {
-            
-        }
+        // Bloque failure eliminado porque estaba vacío
     }
 }
