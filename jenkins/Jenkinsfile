@@ -55,10 +55,14 @@ pipeline {
         stage('Obtener outputs de Terraform') {
             steps {
                 script {
-                    env.FRONTEND_BUCKET = bat(
+                    // El output de 'bat' trae el mensaje "null" al final, así que hay que limpiar líneas vacías.
+                    def bucketResult = bat(
                         script: 'cd infra && terraform output -raw frontend_bucket_name',
                         returnStdout: true
                     ).trim()
+                    // Lo guardamos como variable de entorno para el siguiente bat
+                    env.FRONTEND_BUCKET = bucketResult
+                    echo "Bucket S3 detectado: ${env.FRONTEND_BUCKET}"
                 }
             }
         }
