@@ -7,3 +7,13 @@ output "api_url" {
   value       = "https://${aws_api_gateway_rest_api.iot_api.id}.execute-api.${var.region}.amazonaws.com/prod"
   description = "URL base de la API RESTful para IoT Monitoreo"
 }
+
+output "iot_events_queue_url" {
+  description = "URL de la cola SQS de eventos IoT"
+  value       = aws_sqs_queue.iot_events.url
+}
+
+output "iot_events_queue_arn" {
+  description = "ARN de la cola SQS de eventos IoT"
+  value       = aws_sqs_queue.iot_events.arn
+}

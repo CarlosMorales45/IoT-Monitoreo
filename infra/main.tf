@@ -103,7 +103,7 @@ resource "aws_dynamodb_table" "iot_data" {
   range_key    = "timestamp"
 
   stream_enabled   = true
-  stream_view_type = "NEW_AND_OLD_IMAGES"  # Permite ver cambios antes/después
+  stream_view_type = "NEW_AND_OLD_IMAGES"
 
   attribute {
     name = "device_id"
@@ -121,20 +121,23 @@ resource "aws_dynamodb_table" "iot_data" {
   }
 }
 
+# --- SQS QUEUE PARA EVENTOS IoT (Referencias a sqs.tf) ---
+# Las colas y permisos se definen en sqs.tf
+# Solo nos aseguramos de usar las variables y outputs correctamente en las Lambdas
+
 # --- Lambda: register_device ---
 resource "aws_lambda_function" "register_device" {
   function_name = "register_device"
   handler       = "main.lambda_handler"
   runtime       = "python3.12"
-
   filename         = "${path.module}/../backend/lambda_build/lambda_register_device.zip"
   source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_register_device.zip")
-
   role = aws_iam_role.lambda_role.arn
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+      DYNAMODB_TABLE_NAME   = var.dynamodb_table_name
+      IOT_EVENTS_QUEUE_URL  = aws_sqs_queue.iot_events.url
     }
   }
 
@@ -146,10 +149,8 @@ resource "aws_lambda_function" "get_device" {
   function_name = "get_device"
   handler       = "main.lambda_handler"
   runtime       = "python3.12"
-
   filename         = "${path.module}/../backend/lambda_build/lambda_get_device.zip"
   source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_get_device.zip")
-
   role = aws_iam_role.lambda_role.arn
 
   environment {
@@ -166,10 +167,8 @@ resource "aws_lambda_function" "list_devices" {
   function_name = "list_devices"
   handler       = "main.lambda_handler"
   runtime       = "python3.12"
-
   filename         = "${path.module}/../backend/lambda_build/lambda_list_devices.zip"
   source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_list_devices.zip")
-
   role = aws_iam_role.lambda_role.arn
 
   environment {
@@ -181,59 +180,19 @@ resource "aws_lambda_function" "list_devices" {
   timeout = 10
 }
 
-# --- Permisos adicionales para Lambda sobre DynamoDB ---
-resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
-  name = "lambda-dynamodb-policy"
-  role = aws_iam_role.lambda_role.id
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect   = "Allow",
-        Action   = [
-          "dynamodb:PutItem",
-          "dynamodb:GetItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:Scan",
-          "dynamodb:Query",
-          "dynamodb:DeleteItem",
-          # AGREGADOS PARA STREAMS:
-          "dynamodb:DescribeStream",
-          "dynamodb:GetRecords",
-          "dynamodb:GetShardIterator",
-          "dynamodb:ListStreams"
-        ],
-        Resource = aws_dynamodb_table.iot_data.arn
-      },
-      # Permitir también acceso a los streams asociados (importante)
-      {
-        Effect   = "Allow",
-        Action   = [
-          "dynamodb:DescribeStream",
-          "dynamodb:GetRecords",
-          "dynamodb:GetShardIterator",
-          "dynamodb:ListStreams"
-        ],
-        Resource = "${aws_dynamodb_table.iot_data.stream_arn}"
-      }
-    ]
-  })
-}
-
 # --- Lambda: update_device ---
 resource "aws_lambda_function" "update_device" {
   function_name = "update_device"
   handler       = "main.lambda_handler"
   runtime       = "python3.12"
-
   filename         = "${path.module}/../backend/lambda_build/lambda_update_device.zip"
   source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_update_device.zip")
-
   role = aws_iam_role.lambda_role.arn
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+      DYNAMODB_TABLE_NAME   = var.dynamodb_table_name
+      IOT_EVENTS_QUEUE_URL  = aws_sqs_queue.iot_events.url
     }
   }
 
@@ -245,15 +204,14 @@ resource "aws_lambda_function" "delete_device" {
   function_name = "delete_device"
   handler       = "main.lambda_handler"
   runtime       = "python3.12"
-
   filename         = "${path.module}/../backend/lambda_build/lambda_delete_device.zip"
   source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_delete_device.zip")
-
   role = aws_iam_role.lambda_role.arn
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = var.dynamodb_table_name
+      DYNAMODB_TABLE_NAME   = var.dynamodb_table_name
+      IOT_EVENTS_QUEUE_URL  = aws_sqs_queue.iot_events.url
     }
   }
 
@@ -265,17 +223,16 @@ resource "aws_lambda_function" "notify_error" {
   function_name = "notify_error"
   handler       = "main.lambda_handler"
   runtime       = "python3.12"
-
   filename         = "${path.module}/../backend/lambda_build/lambda_notify_error.zip"
   source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_notify_error.zip")
-
   role = aws_iam_role.lambda_role.arn
 
   environment {
     variables = {
-      TELEGRAM_BOT_TOKEN   = var.TELEGRAM_BOT_TOKEN
-      TELEGRAM_CHAT_ID     = var.TELEGRAM_CHAT_ID
-      DYNAMODB_TABLE_NAME  = var.dynamodb_table_name
+      TELEGRAM_BOT_TOKEN    = var.TELEGRAM_BOT_TOKEN
+      TELEGRAM_CHAT_ID      = var.TELEGRAM_CHAT_ID
+      DYNAMODB_TABLE_NAME   = var.dynamodb_table_name
+      IOT_EVENTS_QUEUE_URL  = aws_sqs_queue.iot_events.url
     }
   }
 
@@ -287,17 +244,16 @@ resource "aws_lambda_function" "notify_recovery" {
   function_name = "notify_recovery"
   handler       = "main.lambda_handler"
   runtime       = "python3.12"
-
   filename         = "${path.module}/../backend/lambda_build/lambda_notify_recovery.zip"
   source_code_hash = filebase64sha256("${path.module}/../backend/lambda_build/lambda_notify_recovery.zip")
-
   role = aws_iam_role.lambda_role.arn
 
   environment {
     variables = {
-      TELEGRAM_BOT_TOKEN   = var.TELEGRAM_BOT_TOKEN
-      TELEGRAM_CHAT_ID     = var.TELEGRAM_CHAT_ID
-      DYNAMODB_TABLE_NAME  = var.dynamodb_table_name
+      TELEGRAM_BOT_TOKEN    = var.TELEGRAM_BOT_TOKEN
+      TELEGRAM_CHAT_ID      = var.TELEGRAM_CHAT_ID
+      DYNAMODB_TABLE_NAME   = var.dynamodb_table_name
+      IOT_EVENTS_QUEUE_URL  = aws_sqs_queue.iot_events.url
     }
   }
 

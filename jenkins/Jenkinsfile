@@ -2,10 +2,7 @@ pipeline {
     agent any
 
     environment {
-        // Ajusta si usas rutas absolutas
         PATH = "${HOME}/.local/bin:${PATH}"
-        // Para react
-        REACT_APP_API_URL = 'https://<TU_API_GATEWAY_URL>'
     }
 
     stages {
@@ -26,7 +23,6 @@ pipeline {
         }
         stage('Empaquetar Lambdas') {
             steps {
-                // Llama tu script para crear los .zip de lambdas
                 powershell 'backend\\build_all_lambdas.ps1'
             }
         }
@@ -41,14 +37,26 @@ pipeline {
         stage('Terraform Plan & Apply') {
             steps {
                 dir('infra') {
-                    withCredentials([string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
-                                     string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    withCredentials([
+                        string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
                         sh '''
                             terraform init
                             terraform plan -out=tfplan
                             terraform apply -auto-approve tfplan
                         '''
                     }
+                }
+            }
+        }
+        stage('Obtener outputs de Terraform') {
+            steps {
+                script {
+                    env.FRONTEND_BUCKET = sh(
+                        script: "cd infra && terraform output -raw frontend_bucket_name",
+                        returnStdout: true
+                    ).trim()
                 }
             }
         }
@@ -64,9 +72,8 @@ pipeline {
         }
         stage('Upload Frontend to S3') {
             steps {
-                // Ajusta el bucket al nombre real (ver outputs de Terraform)
                 sh '''
-                    aws s3 sync frontend/dashboard-iot/build s3://iot-monitoreo-dashboard-<TU_SUFIJO> --delete
+                    aws s3 sync frontend/dashboard-iot/build s3://$FRONTEND_BUCKET --delete
                 '''
             }
         }
@@ -75,6 +82,9 @@ pipeline {
         always {
             archiveArtifacts artifacts: 'checkov_report.txt', allowEmptyArchive: true
             archiveArtifacts artifacts: 'pytest_report.txt', allowEmptyArchive: true
+        }
+        failure {
+            
         }
     }
 }

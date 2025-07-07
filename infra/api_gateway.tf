@@ -80,15 +80,16 @@ resource "aws_api_gateway_method_response" "options_devices_200" {
   response_models = { "application/json" = "Empty" }
 }
 resource "aws_api_gateway_integration_response" "options_devices_200" {
-  rest_api_id = aws_api_gateway_rest_api.iot_api.id
-  resource_id = aws_api_gateway_resource.devices.id
-  http_method = aws_api_gateway_method.options_devices.http_method
-  status_code = aws_api_gateway_method_response.options_devices_200.status_code
+  rest_api_id  = aws_api_gateway_rest_api.iot_api.id
+  resource_id  = aws_api_gateway_resource.devices.id
+  http_method  = aws_api_gateway_method.options_devices.http_method
+  status_code  = aws_api_gateway_method_response.options_devices_200.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
   }
+  depends_on = [aws_api_gateway_integration.options_devices_integration]
 }
 
 # --- Métodos REST para /devices/{device_id} ---
@@ -185,15 +186,16 @@ resource "aws_api_gateway_method_response" "options_device_id_200" {
   response_models = { "application/json" = "Empty" }
 }
 resource "aws_api_gateway_integration_response" "options_device_id_200" {
-  rest_api_id = aws_api_gateway_rest_api.iot_api.id
-  resource_id = aws_api_gateway_resource.device_id.id
-  http_method = aws_api_gateway_method.options_device_id.http_method
-  status_code = aws_api_gateway_method_response.options_device_id_200.status_code
+  rest_api_id  = aws_api_gateway_rest_api.iot_api.id
+  resource_id  = aws_api_gateway_resource.device_id.id
+  http_method  = aws_api_gateway_method.options_device_id.http_method
+  status_code  = aws_api_gateway_method_response.options_device_id_200.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
     "method.response.header.Access-Control-Allow-Methods" = "'GET,PUT,DELETE,OPTIONS'"
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
   }
+  depends_on = [aws_api_gateway_integration.options_device_id_integration]
 }
 
 # --- RECURSO PARA LOGIN ---
@@ -246,15 +248,16 @@ resource "aws_api_gateway_method_response" "options_login_200" {
   response_models = { "application/json" = "Empty" }
 }
 resource "aws_api_gateway_integration_response" "options_login_200" {
-  rest_api_id = aws_api_gateway_rest_api.iot_api.id
-  resource_id = aws_api_gateway_resource.login.id
-  http_method = aws_api_gateway_method.options_login.http_method
-  status_code = aws_api_gateway_method_response.options_login_200.status_code
+  rest_api_id  = aws_api_gateway_rest_api.iot_api.id
+  resource_id  = aws_api_gateway_resource.login.id
+  http_method  = aws_api_gateway_method.options_login.http_method
+  status_code  = aws_api_gateway_method_response.options_login_200.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
   }
+  depends_on = [aws_api_gateway_integration.options_login_integration]
 }
 
 # --- RECURSO PARA REGISTER ---
@@ -307,15 +310,16 @@ resource "aws_api_gateway_method_response" "options_register_200" {
   response_models = { "application/json" = "Empty" }
 }
 resource "aws_api_gateway_integration_response" "options_register_200" {
-  rest_api_id = aws_api_gateway_rest_api.iot_api.id
-  resource_id = aws_api_gateway_resource.register.id
-  http_method = aws_api_gateway_method.options_register.http_method
-  status_code = aws_api_gateway_method_response.options_register_200.status_code
+  rest_api_id  = aws_api_gateway_rest_api.iot_api.id
+  resource_id  = aws_api_gateway_resource.register.id
+  http_method  = aws_api_gateway_method.options_register.http_method
+  status_code  = aws_api_gateway_method_response.options_register_200.status_code
   response_parameters = {
     "method.response.header.Access-Control-Allow-Origin" = "'*'"
     "method.response.header.Access-Control-Allow-Methods" = "'POST,OPTIONS'"
     "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
   }
+  depends_on = [aws_api_gateway_integration.options_register_integration]
 }
 
 ### PERMISOS PARA TODAS LAS LAMBDAS ###
