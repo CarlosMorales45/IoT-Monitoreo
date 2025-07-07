@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PATH = "${HOME}/.local/bin:${PATH}"
+        PATH = "${HOME}/.local/bin;${PATH}" // Usa ; para Windows
     }
 
     stages {
@@ -13,11 +13,9 @@ pipeline {
         }
         stage('Análisis de Vulnerabilidades (Checkov)') {
             steps {
-                sh '''
-                    if ! command -v checkov >/dev/null 2>&1; then
-                        pip install --user checkov
-                    fi
-                    checkov -d infra/ --output cli | tee checkov_report.txt
+                bat '''
+                    pip install --user checkov
+                    checkov -d infra/ --output cli > checkov_report.txt
                 '''
             }
         }
@@ -28,9 +26,9 @@ pipeline {
         }
         stage('Pruebas unitarias (pytest)') {
             steps {
-                sh '''
+                bat '''
                     pip install --user pytest
-                    pytest backend/tests | tee pytest_report.txt
+                    pytest backend/tests > pytest_report.txt
                 '''
             }
         }
@@ -41,7 +39,7 @@ pipeline {
                         string(credentialsId: 'AWS_ACCESS_KEY_ID', variable: 'AWS_ACCESS_KEY_ID'),
                         string(credentialsId: 'AWS_SECRET_ACCESS_KEY', variable: 'AWS_SECRET_ACCESS_KEY')
                     ]) {
-                        sh '''
+                        bat '''
                             terraform init
                             terraform plan -out=tfplan
                             terraform apply -auto-approve tfplan
@@ -53,8 +51,8 @@ pipeline {
         stage('Obtener outputs de Terraform') {
             steps {
                 script {
-                    env.FRONTEND_BUCKET = sh(
-                        script: "cd infra && terraform output -raw frontend_bucket_name",
+                    env.FRONTEND_BUCKET = bat(
+                        script: 'cd infra && terraform output -raw frontend_bucket_name',
                         returnStdout: true
                     ).trim()
                 }
@@ -63,7 +61,7 @@ pipeline {
         stage('Build Frontend (React)') {
             steps {
                 dir('frontend/dashboard-iot') {
-                    sh '''
+                    bat '''
                         npm install
                         npm run build
                     '''
@@ -72,8 +70,8 @@ pipeline {
         }
         stage('Upload Frontend to S3') {
             steps {
-                sh '''
-                    aws s3 sync frontend/dashboard-iot/build s3://$FRONTEND_BUCKET --delete
+                bat '''
+                    aws s3 sync frontend/dashboard-iot/build s3://%FRONTEND_BUCKET% --delete
                 '''
             }
         }
@@ -83,6 +81,5 @@ pipeline {
             archiveArtifacts artifacts: 'checkov_report.txt', allowEmptyArchive: true
             archiveArtifacts artifacts: 'pytest_report.txt', allowEmptyArchive: true
         }
-        // Bloque failure eliminado porque estaba vacío
     }
 }
