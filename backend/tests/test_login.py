@@ -14,7 +14,7 @@ def load_lambda_module(path):
 def test_login_handler_success(monkeypatch):
     mod = load_lambda_module(
         os.path.abspath(
-            os.path.join(os.path.dirname(__file__), '..', 'lambdas', 'lambda_login', 'main.py')
+            os.path.join(os.path.dirname(__file__), '..', 'lambdas', 'lambda_login_user', 'main.py')
         )
     )
     def fake_get_item(Key):
@@ -28,7 +28,7 @@ def test_login_handler_success(monkeypatch):
 def test_login_handler_wrong_password(monkeypatch):
     mod = load_lambda_module(
         os.path.abspath(
-            os.path.join(os.path.dirname(__file__), '..', 'lambdas', 'lambda_login', 'main.py')
+            os.path.join(os.path.dirname(__file__), '..', 'lambdas', 'lambda_login_user', 'main.py')
         )
     )
     def fake_get_item(Key):
