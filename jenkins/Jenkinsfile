@@ -60,7 +60,6 @@ pipeline {
                         script: 'cd infra && terraform output -raw frontend_bucket_name',
                         returnStdout: true
                     ).trim()
-                    // Lo guardamos como variable de entorno para el siguiente bat
                     env.FRONTEND_BUCKET = bucketResult
                     echo "Bucket S3 detectado: ${env.FRONTEND_BUCKET}"
                 }
@@ -78,9 +77,13 @@ pipeline {
         }
         stage('Upload Frontend to S3') {
             steps {
-                bat '''
-                    aws s3 sync frontend/dashboard-iot/build s3://%FRONTEND_BUCKET% --delete
-                '''
+                script {
+                    echo "Subiendo a bucket: ${env.FRONTEND_BUCKET}"
+                    // Aquí usamos bat triple comilla y variable Groovy, para evitar problemas de interpolación
+                    bat """
+                        aws s3 sync frontend/dashboard-iot/build s3://${env.FRONTEND_BUCKET} --delete
+                    """
+                }
             }
         }
     }
