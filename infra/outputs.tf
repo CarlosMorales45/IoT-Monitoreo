@@ -17,3 +17,8 @@ output "iot_events_queue_arn" {
   description = "ARN de la cola SQS de eventos IoT"
   value       = aws_sqs_queue.iot_events.arn
 }
+
+output "frontend_bucket_name" {
+  description = "Nombre del bucket S3 para el dashboard"
+  value       = aws_s3_bucket.frontend.bucket
+}
